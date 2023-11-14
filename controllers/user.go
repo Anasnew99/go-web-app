@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"anasnew99/server/chat_app/collections"
 	"anasnew99/server/chat_app/db"
 	"anasnew99/server/chat_app/utils"
 	"context"
@@ -20,10 +21,8 @@ type User struct {
 	Rooms    []Room `json:"rooms" bson:"rooms"`
 }
 
-const USERS = "users"
-
 func GetUserCollection() *mongo.Collection {
-	return db.GetDB().Collection(USERS)
+	return db.GetDB().Collection(collections.USERS)
 }
 
 func InsertUser(user User) (*mongo.InsertOneResult, error) {
