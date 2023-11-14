@@ -3,6 +3,7 @@ package controllers
 import (
 	"anasnew99/server/chat_app/collections"
 	"anasnew99/server/chat_app/db"
+	"anasnew99/server/chat_app/models"
 	"anasnew99/server/chat_app/utils"
 	"context"
 	"errors"
@@ -13,29 +14,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type Room struct {
-	Id          string    `json:"id" bson:"_id"`
-	Description string    `json:"description" bson:"description"`
-	Password    string    `json:"password" bson:"password"`
-	RoomOwner   User      `json:"room_owner" bson:"room_owner"`
-	CreatedAt   int64     `json:"created_at" bson:"created_at"`
-	Users       []User    `json:"users" bson:"users"`
-	Messages    []Message `json:"messages" bson:"messages"`
-}
-
-type AddRoomObject struct {
-	Description string `json:"description" bson:"description"`
-	Password    string `json:"password" bson:"password"`
-	RoomOwner   string `json:"room_owner" bson:"room_owner"`
-	CreatedAt   int64  `json:"created_at" bson:"created_at"`
-	Id          string `json:"id" bson:"_id"`
-}
-
 func GetRoomCollection() *mongo.Collection {
 	return db.GetDB().Collection(collections.ROOMS)
 }
 
-func AddRoom(room AddRoomObject) (*mongo.InsertOneResult, error) {
+func AddRoom(room models.AddRoomObject) (*mongo.InsertOneResult, error) {
 	room.CreatedAt = time.Now().Unix()
 	if room.Password != "" {
 		room.Password = utils.GetHashedString(room.Password)
@@ -66,8 +49,8 @@ func JoinRoom(username string, roomId string, password string) error {
 
 }
 
-func GetRoom(roomId string) (Room, error) {
-	var room Room
+func GetRoom(roomId string) (models.Room, error) {
+	var room models.Room
 	var data any
 	// use $lookup to get the User object for RoomOwner
 	lookupStage := bson.D{{Key: "$lookup", Value: bson.D{
@@ -133,8 +116,8 @@ func GetRoom(roomId string) (Room, error) {
 	return room, nil
 }
 
-func GetMinimalizedRoom(roomId string) (Room, error) {
-	var room Room
+func GetMinimalizedRoom(roomId string) (models.Room, error) {
+	var room models.Room
 	// use $lookup to get the User object for RoomOwner
 	lookupStage := bson.D{{Key: "$lookup", Value: bson.D{
 		{Key: "from", Value: "users"},
@@ -181,8 +164,8 @@ func GetMinimalizedRoom(roomId string) (Room, error) {
 	return room, nil
 }
 
-func IsUserJoinedInTheRoom(username string, roomId string) (room Room, isJoined bool) {
-	var r Room
+func IsUserJoinedInTheRoom(username string, roomId string) (room models.Room, isJoined bool) {
+	var r models.Room
 	r, err := GetRoom(roomId)
 	fmt.Println(r.Users)
 	room = r

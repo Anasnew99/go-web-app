@@ -3,6 +3,7 @@ package routers
 import (
 	"anasnew99/server/chat_app/controllers"
 	"anasnew99/server/chat_app/middlewares"
+	"anasnew99/server/chat_app/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -10,7 +11,7 @@ import (
 
 func AddRoomRouters(c *gin.RouterGroup) {
 	c.POST("/", func(c *gin.Context) {
-		var room controllers.AddRoomObject
+		var room models.AddRoomObject
 		if err := c.ShouldBindJSON(&room); err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return

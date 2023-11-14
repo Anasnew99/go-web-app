@@ -3,6 +3,7 @@ package controllers
 import (
 	"anasnew99/server/chat_app/collections"
 	"anasnew99/server/chat_app/db"
+	"anasnew99/server/chat_app/models"
 	"anasnew99/server/chat_app/utils"
 	"context"
 	"errors"
@@ -13,23 +14,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type User struct {
-	Id       string `json:"id" bson:"_id"`
-	Username string `json:"username" bson:"username"`
-	Password string `json:"password" bson:"password"`
-	Email    string `json:"email" bson:"email"`
-	Rooms    []Room `json:"rooms" bson:"rooms"`
-}
-
 func GetUserCollection() *mongo.Collection {
 	return db.GetDB().Collection(collections.USERS)
 }
 
-func InsertUser(user User) (*mongo.InsertOneResult, error) {
+func InsertUser(user models.User) (*mongo.InsertOneResult, error) {
 	user.Password = utils.GetHashedString(user.Password)
 
 	user.Id = user.Username
-	user.Rooms = []Room{}
+	user.Rooms = []models.Room{}
 
 	return GetUserCollection().InsertOne(context.TODO(), user)
 }
@@ -40,7 +33,7 @@ func DeleteUser(username string) (*mongo.DeleteResult, error) {
 	})
 }
 
-func GetUserRooms(username string) ([]Room, error) {
+func GetUserRooms(username string) ([]models.Room, error) {
 	// get rooms object from room collection
 	var data struct {
 		Rooms []string `json:"rooms" bson:"rooms"`
@@ -52,11 +45,11 @@ func GetUserRooms(username string) ([]Room, error) {
 	})).Decode(&data)
 
 	if err != nil {
-		return []Room{}, err
+		return []models.Room{}, err
 	}
-	var rooms []Room
+	var rooms []models.Room
 	for _, roomId := range data.Rooms {
-		var room Room
+		var room models.Room
 		room, err := GetMinimalizedRoom(roomId)
 		if err == nil {
 			rooms = append(rooms, room)
@@ -66,8 +59,8 @@ func GetUserRooms(username string) ([]Room, error) {
 	return rooms, nil
 }
 
-func GetUser(username string) (User, error) {
-	var user User
+func GetUser(username string) (models.User, error) {
+	var user models.User
 	// lookup rooms
 	err := GetUserCollection().FindOne(context.TODO(), bson.M{
 		"_id": username,

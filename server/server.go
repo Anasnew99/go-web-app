@@ -1,7 +1,6 @@
 package server
 
 import (
-	"anasnew99/server/chat_app/controllers"
 	"anasnew99/server/chat_app/db"
 	"anasnew99/server/chat_app/middlewares"
 	"anasnew99/server/chat_app/routers"
@@ -26,15 +25,6 @@ func StartServer() {
 
 	r := GetRouter()
 	db.Connect(os.Getenv("MONGODB_URI"), os.Getenv("MONGODB_NAME"))
-	var adminUser = controllers.User{
-		Username: os.Getenv("ADMIN_USERNAME"),
-		Password: os.Getenv("ADMIN_PASSWORD"),
-	}
-
-	// Delete and insert admin user
-	controllers.DeleteUser(adminUser.Username)
-	controllers.InsertUser(adminUser)
-
 	defer db.Disconnect()
 	r.Run() // listen and serve on
 

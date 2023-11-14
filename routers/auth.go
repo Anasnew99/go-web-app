@@ -2,6 +2,7 @@ package routers
 
 import (
 	"anasnew99/server/chat_app/controllers"
+	"anasnew99/server/chat_app/models"
 	"fmt"
 	"net/http"
 
@@ -36,7 +37,7 @@ func addAuthRouter(r *gin.RouterGroup) {
 	})
 
 	r.POST("/register", func(c *gin.Context) {
-		var user controllers.User
+		var user models.User
 		if err := c.ShouldBindJSON(&user); err != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"error": fmt.Sprintf("Bad request: %v", err),

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"anasnew99/server/chat_app/models"
 	"anasnew99/server/chat_app/utils"
 	"errors"
 	"fmt"
@@ -30,22 +31,22 @@ func VerifyToken(token string) (claims map[string]string, err error) {
 	return utils.VerifyJWT[string](token, os.Getenv("JWT_SECRET"))
 }
 
-func GetUserFromRequest(c *gin.Context) User {
+func GetUserFromRequest(c *gin.Context) models.User {
 	claims, ok := c.Request.Context().Value("claims").(map[string]string)
 	fmt.Println(claims)
 	if !ok {
-		return User{}
+		return models.User{}
 	}
-	return User{
+	return models.User{
 		Username: claims["username"],
 		Email:    claims["email"],
 	}
 }
 
-func GetRoomFromRequest(c *gin.Context) Room {
-	room, ok := c.Request.Context().Value("room").(Room)
+func GetRoomFromRequest(c *gin.Context) models.Room {
+	room, ok := c.Request.Context().Value("room").(models.Room)
 	if !ok {
-		return Room{}
+		return models.Room{}
 	}
 	return room
 }
