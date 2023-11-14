@@ -7,7 +7,6 @@ import (
 	"anasnew99/server/chat_app/utils"
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -153,9 +152,7 @@ func getMinimalizedRoom(roomId string) (models.Room, error) {
 func isUserJoinedInTheRoom(username string, roomId string) (room models.Room, isJoined bool) {
 	var r models.Room
 	r, err := getRoom(roomId)
-	fmt.Println(r.Users)
 	room = r
-	fmt.Println(room, err)
 	if err != nil {
 		return room, false
 	}

@@ -3,7 +3,6 @@ package controllers
 import (
 	"anasnew99/server/chat_app/utils"
 	"errors"
-	"fmt"
 	"os"
 	"time"
 )
@@ -15,7 +14,6 @@ type AuthController struct {
 
 var Auth = &AuthController{
 	Authenticate: func(username string, password string) (string, error) {
-		fmt.Println(username, password)
 		user, err := User.GetUser(username)
 		if err != nil {
 			return "", err
