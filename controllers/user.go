@@ -20,12 +20,13 @@ type User struct {
 	Rooms    []Room `json:"rooms" bson:"rooms"`
 }
 
+const USERS = "users"
+
 func GetUserCollection() *mongo.Collection {
-	return db.GetDB().Collection("users")
+	return db.GetDB().Collection(USERS)
 }
 
 func InsertUser(user User) (*mongo.InsertOneResult, error) {
-	fmt.Println("Password", user.Password)
 	user.Password = utils.GetHashedString(user.Password)
 
 	user.Id = user.Username

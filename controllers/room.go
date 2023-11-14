@@ -30,8 +30,10 @@ type AddRoomObject struct {
 	Id          string `json:"id" bson:"_id"`
 }
 
+const ROOMS = "rooms"
+
 func GetRoomCollection() *mongo.Collection {
-	return db.GetDB().Collection("rooms")
+	return db.GetDB().Collection(ROOMS)
 }
 
 func AddRoom(room AddRoomObject) (*mongo.InsertOneResult, error) {
@@ -70,7 +72,7 @@ func GetRoom(roomId string) (Room, error) {
 	var data any
 	// use $lookup to get the User object for RoomOwner
 	lookupStage := bson.D{{Key: "$lookup", Value: bson.D{
-		{Key: "from", Value: "users"},
+		{Key: "from", Value: USERS},
 		{Key: "localField", Value: "room_owner"},
 		{Key: "foreignField", Value: "_id"},
 		{Key: "as", Value: "room_owner"},
@@ -80,7 +82,7 @@ func GetRoom(roomId string) (Room, error) {
 	lookupStage2 := bson.D{
 		{
 			Key: "$lookup", Value: bson.D{
-				{Key: "from", Value: "users"},
+				{Key: "from", Value: USERS},
 				{Key: "let", Value: bson.D{{Key: "userIds", Value: "$users"}}},
 				{Key: "pipeline", Value: bson.A{
 					bson.D{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$in", Value: bson.A{"$_id", "$$userIds"}}}}}}},
@@ -163,7 +165,7 @@ func GetMinimalizedRoom(roomId string) (Room, error) {
 	// use $limit to limit the number of messages to 50
 	// aggregate the pipeline stages
 
-	pipeline := mongo.Pipeline{lookupStage, unwindStage, matchStage, projectStage}
+	pipeline := mongo.Pipeline{matchStage, lookupStage, unwindStage, projectStage}
 	cursor, err := GetRoomCollection().Aggregate(context.Background(), pipeline)
 	if err != nil {
 		return room, err

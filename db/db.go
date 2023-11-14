@@ -49,6 +49,9 @@ func GetDB() *mongo.Database {
 	return getClient().Database(dbname)
 }
 
+func DropDB() error {
+	return GetDB().Drop(context.TODO())
+}
 func Disconnect() {
 	err := getClient().Disconnect(context.TODO())
 	if err != nil {
