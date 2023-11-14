@@ -22,7 +22,7 @@ func addAuthRouter(r *gin.RouterGroup) {
 			return
 		}
 
-		token, err := controllers.Authenticate(credentials.Username, credentials.Password)
+		token, err := controllers.Auth.Authenticate(credentials.Username, credentials.Password)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": fmt.Sprintf("Unauthorized: %v", err),
@@ -45,7 +45,7 @@ func addAuthRouter(r *gin.RouterGroup) {
 			return
 		}
 
-		if _, err := controllers.InsertUser(user); err != nil {
+		if _, err := controllers.User.AddUser(user); err != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"error": fmt.Sprintf("Bad request: %v", err),
 			})

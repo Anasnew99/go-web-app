@@ -9,9 +9,8 @@ import (
 
 func addUserRouter(r *gin.RouterGroup) {
 	r.GET("/profile", func(c *gin.Context) {
-		var user = controllers.GetUserFromRequest(c)
-
-		user, err := controllers.GetUser(user.Username)
+		var user = controllers.Claims.GetUserFromRequest(c)
+		user, err := controllers.User.GetUser(user.Username)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
@@ -21,7 +20,7 @@ func addUserRouter(r *gin.RouterGroup) {
 	})
 
 	r.PATCH("/password", func(c *gin.Context) {
-		var user = controllers.GetUserFromRequest(c)
+		var user = controllers.Claims.GetUserFromRequest(c)
 
 		var password struct {
 			OldPassword string `json:"old_password"`
@@ -33,7 +32,7 @@ func addUserRouter(r *gin.RouterGroup) {
 			return
 		}
 
-		if err := controllers.ChangeUserPassword(user.Username, password.OldPassword, password.NewPassword); err != nil {
+		if err := controllers.User.ChangeUserPassword(user.Username, password.OldPassword, password.NewPassword); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

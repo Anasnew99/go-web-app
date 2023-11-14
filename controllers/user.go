@@ -7,38 +7,47 @@ import (
 	"anasnew99/server/chat_app/utils"
 	"context"
 	"errors"
-	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetUserCollection() *mongo.Collection {
+type UserController struct {
+	GetUserCollection  func() *mongo.Collection
+	AddUser            func(user models.User) (*mongo.InsertOneResult, error)
+	DeleteUser         func(username string) (*mongo.DeleteResult, error)
+	GetUserRooms       func(username string) ([]models.Room, error)
+	GetUser            func(username string) (models.User, error)
+	ChangeUserPassword func(username string, oldPassword string, newPassword string) error
+	AddUserRoom        func(username string, roomId string) error
+}
+
+func getUserCollection() *mongo.Collection {
 	return db.GetDB().Collection(collections.USERS)
 }
 
-func InsertUser(user models.User) (*mongo.InsertOneResult, error) {
+func addUser(user models.User) (*mongo.InsertOneResult, error) {
 	user.Password = utils.GetHashedString(user.Password)
 
 	user.Id = user.Username
 	user.Rooms = []models.Room{}
 
-	return GetUserCollection().InsertOne(context.TODO(), user)
+	return getUserCollection().InsertOne(context.TODO(), user)
 }
 
-func DeleteUser(username string) (*mongo.DeleteResult, error) {
-	return GetUserCollection().DeleteOne(context.TODO(), bson.M{
+func deleteUser(username string) (*mongo.DeleteResult, error) {
+	return getUserCollection().DeleteOne(context.TODO(), bson.M{
 		"_id": username,
 	})
 }
 
-func GetUserRooms(username string) ([]models.Room, error) {
+func getUserRooms(username string) ([]models.Room, error) {
 	// get rooms object from room collection
 	var data struct {
 		Rooms []string `json:"rooms" bson:"rooms"`
 	}
-	err := GetUserCollection().FindOne(context.TODO(), bson.M{
+	err := getUserCollection().FindOne(context.TODO(), bson.M{
 		"_id": username,
 	}, options.FindOne().SetProjection(bson.M{
 		"rooms": 1,
@@ -50,7 +59,7 @@ func GetUserRooms(username string) ([]models.Room, error) {
 	var rooms []models.Room
 	for _, roomId := range data.Rooms {
 		var room models.Room
-		room, err := GetMinimalizedRoom(roomId)
+		room, err := Room.GetMinimalizedRoom(roomId)
 		if err == nil {
 			rooms = append(rooms, room)
 		}
@@ -59,24 +68,24 @@ func GetUserRooms(username string) ([]models.Room, error) {
 	return rooms, nil
 }
 
-func GetUser(username string) (models.User, error) {
+func getUser(username string) (models.User, error) {
 	var user models.User
 	// lookup rooms
-	err := GetUserCollection().FindOne(context.TODO(), bson.M{
+	err := getUserCollection().FindOne(context.TODO(), bson.M{
 		"_id": username,
 	}, options.FindOne().SetProjection(bson.M{
 		"rooms": 0,
 	})).Decode(&user)
-	user.Rooms, _ = GetUserRooms(username)
+	user.Rooms, _ = getUserRooms(username)
 	return user, err
 }
 
-func ChangeUserPassword(username string, oldPassword string, newPassword string) error {
+func changeUserPassword(username string, oldPassword string, newPassword string) error {
 
-	if user, err := GetUser(username); err != nil || user.Password != utils.GetHashedString(oldPassword) {
+	if user, err := getUser(username); err != nil || user.Password != utils.GetHashedString(oldPassword) {
 		return errors.New("wrong password")
 	}
-	GetUserCollection().UpdateOne(context.TODO(), bson.M{
+	getUserCollection().UpdateOne(context.TODO(), bson.M{
 		"_id": username,
 	}, bson.M{
 		"$set": bson.M{
@@ -86,14 +95,23 @@ func ChangeUserPassword(username string, oldPassword string, newPassword string)
 	return nil
 }
 
-func AddUserRoom(username string, roomId string) error {
-	_, err := GetUserCollection().UpdateOne(context.TODO(), bson.M{
+func addUserRoom(username string, roomId string) error {
+	_, err := getUserCollection().UpdateOne(context.TODO(), bson.M{
 		"_id": username,
 	}, bson.M{
 		"$addToSet": bson.M{
 			"rooms": roomId,
 		},
 	})
-	fmt.Println(err)
 	return err
+}
+
+var User = &UserController{
+	GetUserCollection:  getUserCollection,
+	AddUser:            addUser,
+	DeleteUser:         deleteUser,
+	GetUserRooms:       getUserRooms,
+	GetUser:            getUser,
+	ChangeUserPassword: changeUserPassword,
+	AddUserRoom:        addUserRoom,
 }
