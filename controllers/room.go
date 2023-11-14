@@ -32,7 +32,7 @@ func addRoom(room models.AddRoomObject) (*mongo.InsertOneResult, error) {
 		room.Password = utils.GetHashedString(room.Password)
 
 	}
-
+	room.Users = []string{}
 	go addUserRoom(room.RoomOwner, room.Id)
 	return getRoomCollection().InsertOne(context.TODO(), room)
 }
@@ -66,6 +66,19 @@ func getRoom(roomId string) (models.Room, error) {
 		{Key: "as", Value: "room_owner"},
 	},
 	}}
+
+	lookupStage2 := bson.D{
+		{
+			Key: "$lookup", Value: bson.D{
+				{Key: "from", Value: collections.USERS},
+				{Key: "let", Value: bson.D{{Key: "userIds", Value: "$users"}}},
+				{Key: "pipeline", Value: bson.A{
+					bson.D{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$in", Value: bson.A{"$_id", "$$userIds"}}}}}}},
+				}},
+				{Key: "as", Value: "users"},
+			},
+		},
+	}
 	// use $unwind to flatten the room_owner array
 	unwindStage := bson.D{{Key: "$unwind", Value: bson.D{
 		{Key: "path", Value: "$room_owner"},
@@ -80,11 +93,11 @@ func getRoom(roomId string) (models.Room, error) {
 		{Key: "room_owner.rooms", Value: 0},
 		{Key: "users.password", Value: 0},
 		{Key: "messages", Value: 0},
-		{Key: "users", Value: 0},
 	}}}
-	pipeline := mongo.Pipeline{matchStage, lookupStage, unwindStage, projectStage}
+	pipeline := mongo.Pipeline{matchStage, lookupStage, lookupStage2, unwindStage, projectStage}
 
 	cursor, err := getRoomCollection().Aggregate(context.Background(), pipeline)
+
 	if err != nil {
 		return room, err
 	}
