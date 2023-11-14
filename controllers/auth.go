@@ -16,8 +16,9 @@ func Authenticate(username string, password string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	if user.Password != utils.GetHashedString(password) {
-		return "", errors.New("Wrong password")
+		return "", errors.New("wrong password")
 	}
 	return utils.GenerateJWT(map[string]string{
 		"username": user.Username,
@@ -39,4 +40,12 @@ func GetUserFromRequest(c *gin.Context) User {
 		Username: claims["username"],
 		Email:    claims["email"],
 	}
+}
+
+func GetRoomFromRequest(c *gin.Context) Room {
+	room, ok := c.Request.Context().Value("room").(Room)
+	if !ok {
+		return Room{}
+	}
+	return room
 }

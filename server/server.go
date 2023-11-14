@@ -29,17 +29,16 @@ func StartServer() {
 		log.Println("No .env file found")
 	}
 	r := GetRouter()
-	// Connect to MongoDB
 	db.Connect(os.Getenv("MONGODB_URI"), os.Getenv("MONGODB_NAME"))
 	var adminUser = controllers.User{
 		Username: os.Getenv("ADMIN_USERNAME"),
 		Password: os.Getenv("ADMIN_PASSWORD"),
 	}
+
+	// Delete and insert admin user
 	controllers.DeleteUser(adminUser.Username)
-	_, err := controllers.InsertUser(adminUser)
-	if err != nil {
-		log.Println("Admin user already exists")
-	}
+	controllers.InsertUser(adminUser)
+
 	defer db.Disconnect()
 	r.Run() // listen and serve on
 

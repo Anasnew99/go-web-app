@@ -22,7 +22,6 @@ func addAuthRouter(r *gin.RouterGroup) {
 		}
 
 		token, err := controllers.Authenticate(credentials.Username, credentials.Password)
-
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": fmt.Sprintf("Unauthorized: %v", err),
@@ -32,6 +31,28 @@ func addAuthRouter(r *gin.RouterGroup) {
 
 		c.JSON(http.StatusOK, gin.H{
 			"token": token,
+		})
+
+	})
+
+	r.POST("/register", func(c *gin.Context) {
+		var user controllers.User
+		if err := c.ShouldBindJSON(&user); err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("Bad request: %v", err),
+			})
+			return
+		}
+
+		if _, err := controllers.InsertUser(user); err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("Bad request: %v", err),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "User created successfully",
 		})
 
 	})

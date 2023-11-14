@@ -9,6 +9,7 @@ import (
 func addProtectedRoutes(r *gin.RouterGroup) {
 	r.Use(middlewares.AuthAdminRequest())
 	addUserRouter(r.Group("/user"))
+	AddRoomRouters(r.Group("/room"))
 }
 
 func addUnprotectedRoutes(r *gin.RouterGroup) {
