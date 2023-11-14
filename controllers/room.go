@@ -60,8 +60,6 @@ func joinRoom(username string, roomId string, password string) error {
 
 func getRoom(roomId string) (models.Room, error) {
 	var room models.Room
-	var data any
-	// use $lookup to get the User object for RoomOwner
 	lookupStage := bson.D{{Key: "$lookup", Value: bson.D{
 		{Key: "from", Value: collections.USERS},
 		{Key: "localField", Value: "room_owner"},
@@ -69,48 +67,31 @@ func getRoom(roomId string) (models.Room, error) {
 		{Key: "as", Value: "room_owner"},
 	},
 	}}
-
-	lookupStage2 := bson.D{
-		{
-			Key: "$lookup", Value: bson.D{
-				{Key: "from", Value: collections.USERS},
-				{Key: "let", Value: bson.D{{Key: "userIds", Value: "$users"}}},
-				{Key: "pipeline", Value: bson.A{
-					bson.D{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$in", Value: bson.A{"$_id", "$$userIds"}}}}}}},
-				}},
-				{Key: "as", Value: "users"},
-			},
-		},
-	}
 	// use $unwind to flatten the room_owner array
 	unwindStage := bson.D{{Key: "$unwind", Value: bson.D{
 		{Key: "path", Value: "$room_owner"},
 	}}}
-
 	// use $match to filter by roomId
 	matchStage := bson.D{{Key: "$match", Value: bson.D{
 		{Key: "_id", Value: roomId},
 	}}}
-	// use $project to exclude the password field
 	projectStage := bson.D{{Key: "$project", Value: bson.D{
 		{Key: "password", Value: 0},
 		{Key: "room_owner.password", Value: 0},
 		{Key: "room_owner.rooms", Value: 0},
 		{Key: "users.password", Value: 0},
 		{Key: "messages", Value: 0},
-		{Key: "users.rooms", Value: 0},
+		{Key: "users", Value: 0},
 	}}}
+	pipeline := mongo.Pipeline{matchStage, lookupStage, unwindStage, projectStage}
 
-	pipeline := mongo.Pipeline{matchStage, lookupStage, lookupStage2, unwindStage, projectStage}
 	cursor, err := getRoomCollection().Aggregate(context.Background(), pipeline)
 	if err != nil {
 		return room, err
 	}
 	defer cursor.Close(context.Background())
 	if cursor.Next(context.Background()) {
-		cursor.Decode(&data)
 		err = cursor.Decode(&room)
-
 		if err != nil {
 			return room, err
 		}
