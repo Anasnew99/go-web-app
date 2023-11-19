@@ -7,6 +7,7 @@ import (
 	"anasnew99/server/chat_app/utils"
 	"context"
 	"errors"
+	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -47,11 +48,13 @@ func getUserRooms(username string) ([]models.Room, error) {
 	var data struct {
 		Rooms []string `json:"rooms" bson:"rooms"`
 	}
+
+	log.Println(username)
 	err := getUserCollection().FindOne(context.TODO(), bson.M{
 		"_id": username,
-	}, options.FindOne().SetProjection(bson.M{
-		"rooms": 1,
-	})).Decode(&data)
+	}).Decode(&data)
+
+	log.Println(data.Rooms)
 
 	if err != nil {
 		return []models.Room{}, err

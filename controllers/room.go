@@ -7,6 +7,7 @@ import (
 	"anasnew99/server/chat_app/utils"
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -208,6 +209,18 @@ func deleteRoom(roomId string) error {
 	_, err := getRoomCollection().DeleteOne(context.TODO(), bson.M{
 		"_id": roomId,
 	})
+
+	if err != nil {
+		return err
+	}
+	_, err = getUserCollection().UpdateOne(context.TODO(), bson.M{
+		"rooms": roomId,
+	}, bson.M{
+		"$pull": bson.M{
+			"rooms": roomId,
+		},
+	})
+
 	return err
 }
 
@@ -225,8 +238,8 @@ func getUserJoinedRooms(username string) []models.Room {
 		"users": username,
 	}, options.Find().SetProjection(bson.M{
 		"password":   0,
-		"users":      0,
 		"room_owner": 0,
+		"users":      0,
 		"messages":   0,
 	}))
 
@@ -236,7 +249,7 @@ func getUserJoinedRooms(username string) []models.Room {
 
 	defer cursor.Close(context.Background())
 	cursor.All(context.Background(), &rooms)
-
+	log.Println(rooms)
 	return rooms
 }
 
