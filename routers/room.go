@@ -37,7 +37,7 @@ func AddRoomRouters(c *gin.RouterGroup) {
 			return
 		}
 		if err := controllers.Room.JoinRoom(user.Username, roomID, data.Password); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -52,8 +52,29 @@ func AddRoomRouters(c *gin.RouterGroup) {
 		c.JSON(http.StatusOK, gin.H{"room": room})
 	})
 
-	protectedRoomGroup.POST("/leave", func(c *gin.Context) {
+	protectedRoomGroup.DELETE("/", func(c *gin.Context) {
+		var room = controllers.Claims.GetRoomFromRequest(c)
+		if !controllers.Room.IsUserOwnerOfTheRoom(controllers.Claims.GetUserFromRequest(c).Username, room.Id) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not the owner of the room"})
+			return
+		}
+		if err := controllers.Room.DeleteRoom(room.Id); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
+		c.JSON(http.StatusOK, gin.H{"message": "Room deleted successfully"})
+
+	})
+	protectedRoomGroup.POST("/leave", func(c *gin.Context) {
+		var user = controllers.Claims.GetUserFromRequest(c)
+		var room = controllers.Claims.GetRoomFromRequest(c)
+		if err := controllers.Room.LeaveRoom(user.Username, room.Id); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Left room successfully"})
 	})
 
 }

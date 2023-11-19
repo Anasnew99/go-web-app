@@ -1,14 +1,14 @@
 package middlewares
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
 
 func Logger() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		fmt.Println(ctx.FullPath(), ctx.Request.Method)
+		log.Printf("%v %v %v", ctx.Request.Method, ctx.Request.URL, ctx.Request.Proto)
 		ctx.Next()
 	}
 }

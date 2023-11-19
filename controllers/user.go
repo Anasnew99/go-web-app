@@ -59,12 +59,14 @@ func getUserRooms(username string) ([]models.Room, error) {
 	var rooms []models.Room
 	for _, roomId := range data.Rooms {
 		var room models.Room
-		room, err := Room.GetMinimalizedRoom(roomId)
+		room, err := Room.GetMinimalizedRoom(roomId, false)
 		if err == nil {
 			rooms = append(rooms, room)
 		}
 	}
 
+	joinedRooms := Room.getUserJoinedRooms(username)
+	rooms = append(rooms, joinedRooms...)
 	return rooms, nil
 }
 

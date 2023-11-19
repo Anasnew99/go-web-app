@@ -11,6 +11,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type RoomController struct {
@@ -18,8 +19,12 @@ type RoomController struct {
 	AddRoom               func(room models.AddRoomObject) (*mongo.InsertOneResult, error)
 	JoinRoom              func(username string, roomId string, password string) error
 	GetRoom               func(roomId string) (models.Room, error)
-	GetMinimalizedRoom    func(roomId string) (models.Room, error)
+	GetMinimalizedRoom    func(roomId string, withPassword bool) (models.Room, error)
 	IsUserJoinedInTheRoom func(username string, roomId string) (room models.Room, isJoined bool)
+	LeaveRoom             func(username string, roomId string) error
+	DeleteRoom            func(roomId string) error
+	IsUserOwnerOfTheRoom  func(username string, roomId string) bool
+	getUserJoinedRooms    func(username string) []models.Room
 }
 
 func getRoomCollection() *mongo.Collection {
@@ -38,10 +43,11 @@ func addRoom(room models.AddRoomObject) (*mongo.InsertOneResult, error) {
 }
 
 func joinRoom(username string, roomId string, password string) error {
-	room, e := getMinimalizedRoom(roomId)
+	room, e := getMinimalizedRoom(roomId, true)
 	if err := e; err != nil {
 		return err
 	}
+
 	if room.Password != "" && room.Password != utils.GetHashedString(password) {
 		return errors.New("wrong password")
 	}
@@ -71,10 +77,8 @@ func getRoom(roomId string) (models.Room, error) {
 		{
 			Key: "$lookup", Value: bson.D{
 				{Key: "from", Value: collections.USERS},
-				{Key: "let", Value: bson.D{{Key: "userIds", Value: "$users"}}},
-				{Key: "pipeline", Value: bson.A{
-					bson.D{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{{Key: "$in", Value: bson.A{"$_id", "$$userIds"}}}}}}},
-				}},
+				{Key: "localField", Value: "users"},
+				{Key: "foreignField", Value: "_id"},
 				{Key: "as", Value: "users"},
 			},
 		},
@@ -92,6 +96,7 @@ func getRoom(roomId string) (models.Room, error) {
 		{Key: "room_owner.password", Value: 0},
 		{Key: "room_owner.rooms", Value: 0},
 		{Key: "users.password", Value: 0},
+		{Key: "users.rooms", Value: 0},
 		{Key: "messages", Value: 0},
 	}}}
 	pipeline := mongo.Pipeline{matchStage, lookupStage, lookupStage2, unwindStage, projectStage}
@@ -102,8 +107,11 @@ func getRoom(roomId string) (models.Room, error) {
 		return room, err
 	}
 	defer cursor.Close(context.Background())
+	var data any
+
 	if cursor.Next(context.Background()) {
 		err = cursor.Decode(&room)
+		cursor.Decode(&data)
 		if err != nil {
 			return room, err
 		}
@@ -114,7 +122,7 @@ func getRoom(roomId string) (models.Room, error) {
 	return room, nil
 }
 
-func getMinimalizedRoom(roomId string) (models.Room, error) {
+func getMinimalizedRoom(roomId string, withPassword bool) (models.Room, error) {
 	var room models.Room
 	// use $lookup to get the User object for RoomOwner
 	lookupStage := bson.D{{Key: "$lookup", Value: bson.D{
@@ -134,7 +142,6 @@ func getMinimalizedRoom(roomId string) (models.Room, error) {
 	}}}
 	// use $project to exclude the password field
 	projectStage := bson.D{{Key: "$project", Value: bson.D{
-		{Key: "password", Value: 0},
 		{Key: "room_owner.password", Value: 0},
 		{Key: "room_owner.rooms", Value: 0},
 		{Key: "messages", Value: 0},
@@ -159,6 +166,9 @@ func getMinimalizedRoom(roomId string) (models.Room, error) {
 	} else {
 		return room, mongo.ErrNoDocuments
 	}
+	if !withPassword {
+		room.Password = ""
+	}
 	return room, nil
 }
 
@@ -182,6 +192,54 @@ func isUserJoinedInTheRoom(username string, roomId string) (room models.Room, is
 
 }
 
+func leaveRoom(username string, roomId string) error {
+	_, err := getRoomCollection().UpdateOne(context.TODO(), bson.M{
+		"_id": roomId,
+	}, bson.M{
+		"$pull": bson.M{
+			"users": username,
+		},
+	})
+	return err
+}
+
+func deleteRoom(roomId string) error {
+
+	_, err := getRoomCollection().DeleteOne(context.TODO(), bson.M{
+		"_id": roomId,
+	})
+	return err
+}
+
+func isUserOwnerOfTheRoom(username string, roomId string) bool {
+	room, err := getMinimalizedRoom(roomId, false)
+	if err != nil {
+		return false
+	}
+	return room.RoomOwner.Username == username
+}
+
+func getUserJoinedRooms(username string) []models.Room {
+	var rooms []models.Room
+	cursor, err := getRoomCollection().Find(context.TODO(), bson.M{
+		"users": username,
+	}, options.Find().SetProjection(bson.M{
+		"password":   0,
+		"users":      0,
+		"room_owner": 0,
+		"messages":   0,
+	}))
+
+	if err != nil {
+		return rooms
+	}
+
+	defer cursor.Close(context.Background())
+	cursor.All(context.Background(), &rooms)
+
+	return rooms
+}
+
 var Room = &RoomController{
 	GetRoomCollection:     getRoomCollection,
 	AddRoom:               addRoom,
@@ -189,4 +247,8 @@ var Room = &RoomController{
 	GetRoom:               getRoom,
 	GetMinimalizedRoom:    getMinimalizedRoom,
 	IsUserJoinedInTheRoom: isUserJoinedInTheRoom,
+	LeaveRoom:             leaveRoom,
+	DeleteRoom:            deleteRoom,
+	IsUserOwnerOfTheRoom:  isUserOwnerOfTheRoom,
+	getUserJoinedRooms:    getUserJoinedRooms,
 }
