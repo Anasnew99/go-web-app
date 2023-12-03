@@ -1,28 +1,30 @@
 package routers
 
 import (
+	"anasnew99/server/chat_app/constants"
 	"anasnew99/server/chat_app/controllers"
 	"anasnew99/server/chat_app/middlewares"
 	"anasnew99/server/chat_app/models"
+	"anasnew99/server/chat_app/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-func AddRoomRouters(c *gin.RouterGroup) {
+func addRoomRouters(c *gin.RouterGroup) {
 	c.POST("/", func(c *gin.Context) {
 		var room models.AddRoomObject
 		if err := c.ShouldBindJSON(&room); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			utils.SendErrorResponse(c, http.StatusBadRequest, constants.INVALID_DATA, err.Error())
 			return
 		}
 		room.RoomOwner = controllers.Claims.GetUserFromRequest(c).Username
 		if _, err := controllers.Room.AddRoom(room); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			utils.SendErrorResponse(c, http.StatusBadRequest, constants.INVALID_DATA, "Room already exists, please choose another id")
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"message": "Room created successfully"})
+		utils.SendSuccessResponse(c, http.StatusCreated, nil, "Room created successfully")
 	})
 
 	c.POST("/:id/join", func(c *gin.Context) {
@@ -33,15 +35,15 @@ func AddRoomRouters(c *gin.RouterGroup) {
 		var roomID = c.Param("id")
 
 		if err := c.ShouldBindJSON(&data); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			utils.SendErrorResponse(c, http.StatusBadRequest, constants.INVALID_DATA, err.Error())
 			return
 		}
 		if err := controllers.Room.JoinRoom(user.Username, roomID, data.Password); err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			utils.SendErrorResponse(c, http.StatusForbidden, constants.INVALID_DATA, "Wrong password")
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Joined room successfully"})
+		utils.SendSuccessResponse(c, http.StatusOK, nil, "Joined room successfully")
 
 	})
 
@@ -49,32 +51,31 @@ func AddRoomRouters(c *gin.RouterGroup) {
 	protectedRoomGroup.Use(middlewares.AuthRoomRequest())
 	protectedRoomGroup.GET("/", func(c *gin.Context) {
 		var room = controllers.Claims.GetRoomFromRequest(c)
-		c.JSON(http.StatusOK, gin.H{"room": room})
+		utils.SendSuccessResponse(c, http.StatusOK, room, "")
 	})
 
 	protectedRoomGroup.DELETE("/", func(c *gin.Context) {
 		var room = controllers.Claims.GetRoomFromRequest(c)
 		if !controllers.Room.IsUserOwnerOfTheRoom(controllers.Claims.GetUserFromRequest(c).Username, room.Id) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not the owner of the room"})
+			utils.SendErrorResponse(c, http.StatusUnauthorized, constants.UNAUTHORIZED, "You are not the owner of the room")
 			return
 		}
 		if err := controllers.Room.DeleteRoom(room.Id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			utils.SendErrorResponse(c, http.StatusBadRequest, constants.INVALID_DATA, "Room does not exist")
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Room deleted successfully"})
+		utils.SendSuccessResponse(c, http.StatusOK, nil, "Room deleted successfully")
 
 	})
 	protectedRoomGroup.POST("/leave", func(c *gin.Context) {
 		var user = controllers.Claims.GetUserFromRequest(c)
 		var room = controllers.Claims.GetRoomFromRequest(c)
 		if err := controllers.Room.LeaveRoom(user.Username, room.Id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			utils.SendErrorResponse(c, http.StatusBadRequest, constants.INVALID_DATA, "Room does not exist or you are not in the room")
 			return
 		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "Left room successfully"})
+		utils.SendSuccessResponse(c, http.StatusOK, nil, "Left room successfully")
 	})
 
 }

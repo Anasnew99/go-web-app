@@ -1,0 +1,31 @@
+.sections{
+    border: 1px solid;
+    padding: rem(16px);
+    border-radius: rem(8px);
+    width: 100%;
+    
+
+    @mixin dark{
+        border-color: var(--mantine-color-gray-7);
+        /* background-color: var(--mantine-color-gray-7);
+        border-color: var(--mantine-color-gray-7);
+        box-shadow: 0 0 0 0 var(--mantine-color-gray-7);
+        transition: box-shadow 0.3s ease-in-out;
+
+        &:hover{
+            box-shadow: 0 0 0 4px var(--mantine-color-gray-7);
+        } */
+    }
+
+    @mixin light{
+        border-color: var(--mantine-color-gray-2);
+        /* background-color: var(--mantine-color-gray-2);
+        border-color: var(--mantine-color-gray-2);
+        box-shadow: 0 0 0 0 var(--mantine-color-gray-2);
+        transition: box-shadow 0.3s ease-in-out; */
+
+        
+    }
+
+
+}

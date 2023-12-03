@@ -82,6 +82,9 @@ func getUser(username string) (models.User, error) {
 		"rooms": 0,
 	})).Decode(&user)
 	user.Rooms, _ = getUserRooms(username)
+	if user.Rooms == nil {
+		user.Rooms = []models.Room{}
+	}
 	return user, err
 }
 

@@ -1,9 +1,10 @@
 package middlewares
 
 import (
+	"anasnew99/server/chat_app/constants"
 	"anasnew99/server/chat_app/controllers"
 	"anasnew99/server/chat_app/models"
-	"fmt"
+	"anasnew99/server/chat_app/utils"
 	"net/http"
 	"strings"
 
@@ -14,18 +15,14 @@ func AuthAdminRequest() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var authorization = strings.Trim(c.GetHeader("Authorization"), " ")
 		if len(authorization) <= len("Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": fmt.Sprintf("Unauthorized: %v", "Invalid token"),
-			})
+			utils.SendErrorResponse(c, http.StatusUnauthorized, constants.TOKEN_EXPIRED, "Please login again. Token is invalid")
 			return
 		}
 		var bearerToken = authorization[len("Bearer "):]
 
 		claims, err := controllers.Auth.VerifyToken(bearerToken)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": fmt.Sprintf("Unauthorized: %v", err),
-			})
+			utils.SendErrorResponse(c, http.StatusUnauthorized, constants.TOKEN_EXPIRED, "Please login again. Token expired")
 			return
 		}
 		controllers.Claims.SetUserClaimsInRequse(c, models.User{
@@ -42,9 +39,7 @@ func AuthRoomRequest() gin.HandlerFunc {
 		var roomID = ctx.Param("id")
 		var room, isJoined = controllers.Room.IsUserJoinedInTheRoom(user.Username, roomID)
 		if !isJoined {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": fmt.Sprintf("Unauthorized: %v", "You are not joined in this room"),
-			})
+			utils.SendErrorResponse(ctx, http.StatusForbidden, constants.UNAUTHORIZED, "You are not joined in the room")
 			return
 		}
 		controllers.Claims.SetRoomClaimsInRequest(ctx, room)
