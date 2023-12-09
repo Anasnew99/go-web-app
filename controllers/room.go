@@ -26,6 +26,8 @@ type RoomController struct {
 	DeleteRoom            func(roomId string) error
 	IsUserOwnerOfTheRoom  func(username string, roomId string) bool
 	getUserJoinedRooms    func(username string) []models.Room
+	OnReceiveMessage      func(message models.Message, roomId string) error
+	GetRoomMessages       func(roomId string, limit int, page int) []models.Message
 }
 
 func getRoomCollection() *mongo.Collection {
@@ -249,8 +251,78 @@ func getUserJoinedRooms(username string) []models.Room {
 
 	defer cursor.Close(context.Background())
 	cursor.All(context.Background(), &rooms)
-	log.Println(rooms)
 	return rooms
+}
+
+func onReceiveMessage(message models.Message, roomId string) error {
+	_, err := addMessage(message)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = getRoomCollection().UpdateOne(context.TODO(), bson.M{
+		"_id": roomId,
+	}, bson.M{
+		"$push": bson.M{
+			"messages": message.Id,
+		},
+	})
+
+	return err
+}
+
+func getRoomMessages(roomId string, limit int, page int) []models.Message {
+	// TODO: implement pagination
+	type RoomMessages struct {
+		Messages []models.Message `json:"messages" bson:"messages"`
+	}
+	var results = RoomMessages{
+		Messages: []models.Message{},
+	}
+	matchStage := bson.D{{Key: "$match", Value: bson.D{
+		{Key: "_id", Value: roomId},
+	}}}
+	lookupStage := bson.D{{Key: "$lookup", Value: bson.D{
+		{Key: "from", Value: collections.MESSAGES},
+		{Key: "localField", Value: "messages"},
+		{Key: "foreignField", Value: "_id"},
+
+		{Key: "as", Value: "messages"},
+	},
+	}}
+
+	// // look up message owner
+
+	//use $unwind to flatten the messages.user array
+
+	// unwindStage2 := bson.D{{Key: "$unwind", Value: bson.D{
+	// 	{Key: "path", Value: "$messages.user"},
+	// }}}
+	// use $sort to sort messages by createdAt in descending order
+	sortStage := bson.D{{Key: "$sort", Value: bson.D{
+		{Key: "messages.timestamp", Value: -1},
+	}}}
+
+	// projectStage := bson.D{{Key: "$project"}
+
+	cursor, err := getRoomCollection().Aggregate(context.Background(), mongo.Pipeline{matchStage, lookupStage, sortStage})
+
+	if err != nil {
+		log.Println(err)
+		return []models.Message{}
+	}
+
+	if cursor.Next(context.Background()) {
+		err = cursor.Decode(&results)
+		if err != nil {
+			log.Println(err)
+			return []models.Message{}
+		}
+	} else {
+		return []models.Message{}
+	}
+	return results.Messages
 }
 
 var Room = &RoomController{
@@ -264,4 +336,6 @@ var Room = &RoomController{
 	DeleteRoom:            deleteRoom,
 	IsUserOwnerOfTheRoom:  isUserOwnerOfTheRoom,
 	getUserJoinedRooms:    getUserJoinedRooms,
+	OnReceiveMessage:      onReceiveMessage,
+	GetRoomMessages:       getRoomMessages,
 }

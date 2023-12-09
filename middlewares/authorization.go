@@ -14,9 +14,22 @@ import (
 func AuthAdminRequest() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var authorization = strings.Trim(c.GetHeader("Authorization"), " ")
+
 		if len(authorization) <= len("Bearer ") {
-			utils.SendErrorResponse(c, http.StatusUnauthorized, constants.TOKEN_EXPIRED, "Please login again. Token is invalid")
-			return
+			// if it is websocket connection then take token from query
+			if strings.Contains(c.FullPath(), "/ws") {
+				if c.Query("token") == "" {
+					utils.SendErrorResponse(c, http.StatusUnauthorized, constants.TOKEN_EXPIRED, "Please login again. Token is invalid")
+					return
+				}
+				authorization = "Bearer " + c.Query("token")
+
+			} else {
+				utils.SendErrorResponse(c, http.StatusUnauthorized, constants.TOKEN_EXPIRED, "Please login again. Token is invalid")
+				return
+
+			}
+
 		}
 		var bearerToken = authorization[len("Bearer "):]
 

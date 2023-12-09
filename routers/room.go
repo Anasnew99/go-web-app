@@ -6,6 +6,7 @@ import (
 	"anasnew99/server/chat_app/middlewares"
 	"anasnew99/server/chat_app/models"
 	"anasnew99/server/chat_app/utils"
+	"anasnew99/server/chat_app/ws"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -76,6 +77,24 @@ func addRoomRouters(c *gin.RouterGroup) {
 			return
 		}
 		utils.SendSuccessResponse(c, http.StatusOK, nil, "Left room successfully")
+	})
+
+	roomHub := ws.NewRoomHub()
+	go roomHub.Run()
+	protectedRoomGroup.GET("/ws", func(c *gin.Context) {
+		var room = controllers.Claims.GetRoomFromRequest(c)
+		var hub = roomHub.CreateRoomHub(room.Id)
+		var user = controllers.Claims.GetUserFromRequest(c)
+		ws.ServeWs(hub, c.Writer, c.Request, user.Username, room.Id)
+	})
+
+	protectedRoomGroup.GET("/messages", func(c *gin.Context) {
+		var room = controllers.Claims.GetRoomFromRequest(c)
+		// var limit = utils.GetIntQuery(c, "limit", 10)
+		// var page = utils.GetIntQuery(c, "page", 1)
+		var messages = controllers.Room.GetRoomMessages(room.Id, 0, 0)
+		utils.SendSuccessResponse(c, http.StatusOK, messages, "")
+
 	})
 
 }

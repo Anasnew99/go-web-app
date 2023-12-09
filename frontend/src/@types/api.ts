@@ -24,5 +24,14 @@ export interface BaseRoom {
 	created_at: number;
 }
 
+export interface BaseMessage {
+	id: string;
+	username: string;
+	message: string;
+	timestamp: number;
+}
+
+
+
 
 
